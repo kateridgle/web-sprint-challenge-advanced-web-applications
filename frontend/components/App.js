@@ -43,13 +43,16 @@ export default function App() {
     // to the Articles screen. Don't forget to turn off the spinner!
     setMessage('')
     setSpinnerOn(true)
-    axiosWithAuth.post('/login', login)
+    axiosWithAuth.post('/login', {username, password})
     .then(res=>{
-      console.log(res.data)
+      localStorage.setItem('token', res.data.token)
+      setMessage(res.data.message)
+      redirectToArticles();
     })
     .catch(err=>{
       console.log(err.data)
     })
+    setSpinnerOn(false)
   }
 
   const getArticles = () => {
@@ -65,10 +68,14 @@ export default function App() {
     setSpinnerOn(true)
     axiosWithAuth.get('/articles')
     .then(res=>{
-      console.log(res.data)
+      setArticles(res.data.articles)
+      setMessage(res.data.message)
     })
     .catch(err=>{
-      console.log(err.data)
+      if(err.data.status === '401'){
+        redirectToLogin()
+      }
+      else setMessage(err.response.data.message)
     })
     setSpinnerOn(false)
   }
@@ -78,15 +85,64 @@ export default function App() {
     // The flow is very similar to the `getArticles` function.
     // You'll know what to do! Use log statements or breakpoints
     // to inspect the response from the server.
+    setMessage('')
+    setSpinnerOn(true)
+    axiosWithAuth.post('/article', article)
+    .then(res=>{
+      setArticles([...articles, res.data.article])
+      setMessage(res.data.message)
+    })
+    .catch(err=>{
+      if(err.data.status === '401'){
+        redirectToLogin()
+      }
+      else setMessage(err.response.data.message)
+    })
+    setSpinnerOn(false)
   }
 
   const updateArticle = ({ article_id, article }) => {
     // ✨ implement
     // You got this!
+    setMessage('')
+    setSpinnerOn(true)
+    axiosWithAuth.put('/articles', {article_id, article})
+    .then(res => {
+      setArticles(articles.map((article)=>{
+        if(article.article_id===article_id){
+          return res.data.article
+        } else return article
+
+      }))
+
+    })
+    .catch(err=>{
+      if(err.data.status === '401'){
+        redirectToLogin()
+      }
+      else setMessage(err.response.data.message)
+    })
+    .finally(()=>{
+      setSpinnerOn(false)
+    })
   }
 
   const deleteArticle = article_id => {
-    // ✨ implement
+    setMessage('')
+    setSpinnerOn(true)
+    axiosWithAuth.delete('/article', article_id)
+    .then(res=>{
+      setArticles.filter((article)=>{return article.article_id !== article_id })
+    })
+    .catch(err=>{
+      if(err.data.status === '401'){
+        redirectToLogin()
+      }
+      else setMessage(err.response.data.message)
+    })
+    .finally(()=>{
+
+    })
   }
 
   return (
@@ -105,8 +161,8 @@ export default function App() {
           <Route path="/" element={<LoginForm login={login} />} />
           <Route path="/articles" element={
             <>
-              <ArticleForm articles={articles} setArticles={setArticles} />
-              <Articles articles={articles} setArticles={setArticles} />
+              <ArticleForm setArticles={articles} setCurrentArticleId={setCurrentArticleId} postArticle={postArticle} updateArticle={updateArticle} />
+              <Articles setArticles={articles} setCurrentArticleId={setCurrentArticleId} getArticles={getArticles} deleteArticle={deleteArticle} />
             </>
           } />
         </Routes>
